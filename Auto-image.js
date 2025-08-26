@@ -2636,16 +2636,15 @@
     },
 
   saveProgressToFile: () => {
-    // Keep a reference to the file handle after first save
-let fileHandle = null;
+   let fileHandle = null;
 
 /**
- * Save progress into WplaceWprogress.json using File System Access API
- * @param {object} progressData - Object containing progress info
+ * Save progress into WplaceWprogress.json
+ * Will ask for file location only the first time
  */
 async function saveProgress(progressData) {
     try {
-        // If we don't yet have a file handle, ask the user where to save
+        // Ask user to pick file only first time
         if (!fileHandle) {
             fileHandle = await window.showSaveFilePicker({
                 suggestedName: "WplaceWprogress.json",
@@ -2654,45 +2653,20 @@ async function saveProgress(progressData) {
                     accept: { "application/json": [".json"] }
                 }]
             });
+            console.log("✅ File chosen for saving progress.");
         }
 
-        // Create a writable stream
+        // Open the file and write JSON
         const writable = await fileHandle.createWritable();
-        // Write JSON with pretty formatting
         await writable.write(JSON.stringify(progressData, null, 2));
-        // Close the file
         await writable.close();
 
-        console.log("Progress saved ✅");
-
+        console.log("✅ Progress saved successfully!");
     } catch (err) {
-        console.error("Error saving progress:", err);
+        console.error("❌ Error saving progress:", err);
     }
 }
 
-/**
- * Load progress back from WplaceWprogress.json
- */
-async function loadProgress() {
-    try {
-        if (!fileHandle) {
-            [fileHandle] = await window.showOpenFilePicker({
-                types: [{
-                    description: "JSON Files",
-                    accept: { "application/json": [".json"] }
-                }]
-            });
-        }
-
-        const file = await fileHandle.getFile();
-        const text = await file.text();
-        return JSON.parse(text);
-
-    } catch (err) {
-        console.error("Error loading progress:", err);
-        return {};
-    }
-}
 
     },
 
