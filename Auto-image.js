@@ -2636,66 +2636,64 @@
     },
 
   saveProgressToFile: () => {
-     const fs = require("fs");
-const path = require("path");
-
-// File path for shared progress
-const progressFile = path.join(__dirname, "WplaceWprogress.json");
+    // Keep a reference to the file handle after first save
+let fileHandle = null;
 
 /**
- * Save bot progress to shared file
- * @param {string} botId - Unique ID of the bot
- * @param {object} progressData - The progress (example: pixels placed, timestamp, etc.)
+ * Save progress into WplaceWprogress.json using File System Access API
+ * @param {object} progressData - Object containing progress info
  */
-function saveProgress(botId, progressData) {
-    let allProgress = {};
-
-    // Load existing progress if file exists
-    if (fs.existsSync(progressFile)) {
-        try {
-            const raw = fs.readFileSync(progressFile, "utf8");
-            allProgress = JSON.parse(raw);
-        } catch (err) {
-            console.error("Error reading existing progress file:", err);
-        }
-    }
-
-    // Update this bot's progress
-    allProgress[botId] = progressData;
-
-    // Write back to same file
+async function saveProgress(progressData) {
     try {
-        fs.writeFileSync(progressFile, JSON.stringify(allProgress, null, 2), "utf8");
-        console.log(`Progress saved for bot: ${botId}`);
+        // If we don't yet have a file handle, ask the user where to save
+        if (!fileHandle) {
+            fileHandle = await window.showSaveFilePicker({
+                suggestedName: "WplaceWprogress.json",
+                types: [{
+                    description: "JSON Files",
+                    accept: { "application/json": [".json"] }
+                }]
+            });
+        }
+
+        // Create a writable stream
+        const writable = await fileHandle.createWritable();
+        // Write JSON with pretty formatting
+        await writable.write(JSON.stringify(progressData, null, 2));
+        // Close the file
+        await writable.close();
+
+        console.log("Progress saved ✅");
+
     } catch (err) {
         console.error("Error saving progress:", err);
     }
 }
 
-module.exports = { saveProgress };
-
-    },
-
-  loadProgressFromFile: async () => {
-      try {
-        const data = await Utils.createFileUploader()
-        if (!data || !data.state) {
-          throw new Error("Invalid file format")
+/**
+ * Load progress back from WplaceWprogress.json
+ */
+async function loadProgress() {
+    try {
+        if (!fileHandle) {
+            [fileHandle] = await window.showOpenFilePicker({
+                types: [{
+                    description: "JSON Files",
+                    accept: { "application/json": [".json"] }
+                }]
+            });
         }
-        const ver = data.version;
-        let migrated = data;
-        if (ver === '2.1') {
-        } else if (ver === '2' || ver === '2.0') {
-          migrated = Utils.migrateProgressToV21(data) || data;
-        } else {
-          migrated = Utils.migrateProgressToV21(data) || data;
-        }
-    const success = Utils.restoreProgress(migrated)
-        return success
-      } catch (error) {
-        console.error("Error loading from file:", error)
-        throw error
-      }
+
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        return JSON.parse(text);
+
+    } catch (err) {
+        console.error("Error loading progress:", err);
+        return {};
+    }
+}
+
     },
 
     // Helper function to restore overlay from loaded data
