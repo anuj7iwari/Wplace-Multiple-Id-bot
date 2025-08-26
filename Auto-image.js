@@ -2636,51 +2636,44 @@
     },
 
   saveProgressToFile: () => {
-      try {
-        // Pack painted map if available
-        let paintedMapPacked = null;
-        if (state.paintedMap && state.imageData) {
-          const data = Utils.packPaintedMapToBase64(state.paintedMap, state.imageData.width, state.imageData.height);
-          if (data) {
-            paintedMapPacked = {
-              width: state.imageData.width,
-              height: state.imageData.height,
-              data: data
-            };
-          }
-        }
+     const fs = require("fs");
+const path = require("path");
 
-        const progressData = {
-          timestamp: Date.now(),
-          version: "2.1",
-          state: {
-            totalPixels: state.totalPixels,
-            paintedPixels: state.paintedPixels,
-            lastPosition: state.lastPosition,
-            startPosition: state.startPosition,
-            region: state.region,
-            imageLoaded: state.imageLoaded,
-            colorsChecked: state.colorsChecked,
-            availableColors: state.availableColors,
-          },
-          imageData: state.imageData
-            ? {
-              width: state.imageData.width,
-              height: state.imageData.height,
-              pixels: Array.from(state.imageData.pixels),
-              totalPixels: state.imageData.totalPixels,
-            }
-            : null,
-          paintedMapPacked: paintedMapPacked,
-        }
+// File path for shared progress
+const progressFile = path.join(__dirname, "WplaceWprogress.json");
 
-        const filename = `wplace-bot-progress-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`
-        Utils.createFileDownloader(JSON.stringify(progressData, null, 2), filename)
-        return true
-      } catch (error) {
-        console.error("Error saving to file:", error)
-        return false
-      }
+/**
+ * Save bot progress to shared file
+ * @param {string} botId - Unique ID of the bot
+ * @param {object} progressData - The progress (example: pixels placed, timestamp, etc.)
+ */
+function saveProgress(botId, progressData) {
+    let allProgress = {};
+
+    // Load existing progress if file exists
+    if (fs.existsSync(progressFile)) {
+        try {
+            const raw = fs.readFileSync(progressFile, "utf8");
+            allProgress = JSON.parse(raw);
+        } catch (err) {
+            console.error("Error reading existing progress file:", err);
+        }
+    }
+
+    // Update this bot's progress
+    allProgress[botId] = progressData;
+
+    // Write back to same file
+    try {
+        fs.writeFileSync(progressFile, JSON.stringify(allProgress, null, 2), "utf8");
+        console.log(`Progress saved for bot: ${botId}`);
+    } catch (err) {
+        console.error("Error saving progress:", err);
+    }
+}
+
+module.exports = { saveProgress };
+
     },
 
   loadProgressFromFile: async () => {
